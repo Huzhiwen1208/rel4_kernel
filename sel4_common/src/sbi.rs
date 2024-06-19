@@ -1,3 +1,4 @@
+//! SBI (RISC-V Supervisor Binary Interface) wrapper
 #![allow(unused)]
 
 use riscv::register::time;

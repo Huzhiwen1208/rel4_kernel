@@ -1,3 +1,4 @@
+//! This crate implements the IPC mechanism of seL4, including the endpoint, notification, and transfer.
 #![feature(core_intrinsics)]
 #![no_std]
 #![allow(non_snake_case)]

@@ -1,3 +1,4 @@
+//! This module contains constants representing register indices and values used in the kernel.
 pub const ra: usize = 0;
 pub const sp: usize = 1;
 const gp: usize = 2;

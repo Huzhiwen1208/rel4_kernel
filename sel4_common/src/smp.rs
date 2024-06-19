@@ -1,3 +1,4 @@
+//! SMP related functions
 use core::arch::asm;
 use crate::BIT;
 use crate::deps::{coreMap, kernel_stack_alloc};

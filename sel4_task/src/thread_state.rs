@@ -1,6 +1,7 @@
 use sel4_common::plus_define_bitfield;
 
 #[derive(PartialEq, PartialOrd, Debug)]
+/// The state of a thread
 pub enum ThreadState {
     ThreadStateInactive = 0,
     ThreadStateRunning = 1,
@@ -28,6 +29,7 @@ plus_define_bitfield! {
 }
 
 impl thread_state_t {
+    /// Get the state of the thread
     pub fn get_state(&self) -> ThreadState {
         unsafe {
             core::mem::transmute::<u8, ThreadState>(self.get_ts_type() as u8)

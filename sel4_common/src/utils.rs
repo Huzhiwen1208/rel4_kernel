@@ -1,5 +1,7 @@
+//! Utility functions and macros.
 use crate::sel4_config::*;
 #[macro_export]
+/// Define a bitfield struct with the given name, total words, type index, type offset, type bits, and a list of variants.
 macro_rules! plus_define_bitfield {
     ($name:ident, $total_words:expr, $type_index:expr, $type_offset:expr, $type_bits:expr =>
         { $($variant:ident, $type_value:expr => { $($field:ident, $get_field:ident, $set_field:ident, $index:expr, $offset:expr, $bits:expr, $shift:expr, $sign_ext: expr),* }),* }) => {
@@ -51,6 +53,7 @@ macro_rules! plus_define_bitfield {
 }
 
 #[macro_export]
+/// Return fill the given number of bits with 1.
 macro_rules! MASK {
     ($e:expr) => {
         {
@@ -60,6 +63,7 @@ macro_rules! MASK {
 }
 
 #[macro_export]
+/// Calculate the floor of the given number.
 macro_rules! ROUND_DOWN {
     ($n:expr,$b:expr) => {{
         ((($n) >> ($b)) << ($b))
@@ -67,6 +71,7 @@ macro_rules! ROUND_DOWN {
 }
 
 #[macro_export]
+/// Calculate the ceil of the given number.
 macro_rules! ROUND_UP {
     ($n:expr,$b:expr) => {{
         ((((($n) - 1usize) >> ($b)) + 1usize) << ($b))
@@ -74,6 +79,7 @@ macro_rules! ROUND_UP {
 }
 
 #[macro_export]
+/// Judge whether the given number is aligned to the given number of bits.
 macro_rules! IS_ALIGNED {
     ($n:expr,$b:expr) => {{
         $n & MASK!($b) == 0
@@ -82,6 +88,7 @@ macro_rules! IS_ALIGNED {
 
 
 #[macro_export]
+/// Calculate 1 << n for given n.
 macro_rules! BIT {
     ($e:expr) => {
         {

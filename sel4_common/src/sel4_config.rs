@@ -1,3 +1,4 @@
+//! This module contains the configuration settings for sel4_common.
 use crate::{BIT, MASK};
 
 pub const wordRadix: usize = 6;

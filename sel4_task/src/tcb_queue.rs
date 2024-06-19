@@ -5,12 +5,16 @@ use super::tcb::tcb_t;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+/// Structure for the tcb queue
 pub struct tcb_queue_t {
+    /// The head of the queue
     pub head: usize,
+    /// The tail of the queue
     pub tail: usize,
 }
 
 impl tcb_queue_t {
+    /// Append a tcb to the queue
     pub fn ep_append(&mut self, tcb: &mut tcb_t) {
         if self.head == 0 {
             self.head = tcb.get_ptr();
@@ -23,6 +27,7 @@ impl tcb_queue_t {
         self.tail = tcb.get_ptr();
     }
 
+    /// Dequeue a tcb from the queue
     pub fn ep_dequeue(&mut self, tcb: &mut tcb_t) {
         if tcb.tcbEPPrev != 0 {
             convert_to_mut_type_ref::<tcb_t>(tcb.tcbEPPrev).tcbEPNext = tcb.tcbEPNext;
@@ -38,6 +43,7 @@ impl tcb_queue_t {
     }
 
     #[inline]
+    /// Check if the queue is empty
     pub fn empty(&self) -> bool {
         return self.head == 0
     }

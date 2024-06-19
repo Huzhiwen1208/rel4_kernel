@@ -1,7 +1,27 @@
+//! This file contains the implementation of the `seL4_MessageInfo_t` struct and its associated methods.
+//! 
+//! The `seL4_MessageInfo_t` struct represents a message info in the seL4 microkernel. It provides methods for creating, converting, and accessing the fields of a message info.
+//! 
+//! # Examples
+//! 
+//! Creating a new `seL4_MessageInfo_t` from a word:
+//! 
+//! ```
+//! let word = 0x12345678;
+//! let message_info = seL4_MessageInfo_t::from_word(word);
+//! ```
+//! 
+//! Getting the label of the message:
+//! 
+//! ```
+//! let label = message_info.get_label();
+//! ```
+
 use super::sel4_config::seL4_MsgMaxLength;
 use crate::plus_define_bitfield;
 
 #[derive(Eq, PartialEq, Debug, Clone, Copy, PartialOrd, Ord)]
+/// The label of a message.
 pub enum MessageLabel {
     InvalidInvocation                       = 0,
     UntypedRetype,
@@ -58,6 +78,7 @@ plus_define_bitfield! {
 }
 
 impl seL4_MessageInfo_t {
+    /// Creates a new `seL4_MessageInfo_t` from a word.
     #[inline]
     pub fn from_word(w: usize) -> Self {
         Self {
@@ -65,6 +86,7 @@ impl seL4_MessageInfo_t {
         }
     }
 
+    /// Creates a new `seL4_MessageInfo_t` from a word with security checks.
     #[inline]
     pub fn from_word_security(w: usize) -> Self {
         let mut mi = Self::from_word(w);
@@ -74,11 +96,13 @@ impl seL4_MessageInfo_t {
         mi
     }
 
+    /// Converts the `seL4_MessageInfo_t` to a word.
     #[inline]
     pub fn to_word(&self) -> usize {
         self.words[0]
     }
 
+    /// Gets the label of the message.
     #[inline]
     pub fn get_label(&self) -> MessageLabel {
         unsafe {

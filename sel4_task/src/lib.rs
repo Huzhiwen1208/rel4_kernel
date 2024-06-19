@@ -1,3 +1,5 @@
+//! This crate provides task management for seL4, including the TCB, scheduler, and thread relevant structures.
+
 #![feature(core_intrinsics)]
 #![no_std]
 #![allow(non_snake_case)]

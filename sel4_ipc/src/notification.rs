@@ -6,12 +6,14 @@ use crate::transfer::Transfer;
 
 
 #[derive(PartialEq, Eq)]
+/// The state of a notification
 pub enum NtfnState {
     Idle = 0,
     Waiting = 1,
     Active = 2,
 }
 
+/// The structure of a notification, which is used to send and receive signals
 plus_define_bitfield! {
     notification_t, 4, 0, 0, 0 => {
         new, 0 => {
@@ -26,6 +28,7 @@ plus_define_bitfield! {
 
 impl notification_t {
     #[inline]
+    /// Get the state of the notification
     pub fn get_state(&self) -> NtfnState {
         unsafe {
             core::mem::transmute::<u8, NtfnState>(self.get_usize_state() as u8)
@@ -33,23 +36,31 @@ impl notification_t {
     }
 
     #[inline]
+    /// Get the tcb queue of the notification
     pub fn get_queue(&self) -> tcb_queue_t {
         tcb_queue_t { head: self.get_queue_head(), tail: self.get_queue_tail() }
     }
 
     #[inline]
+    /// Set the tcb queue to the notification
     pub fn set_queue(&mut self, queue: &tcb_queue_t) {
         self.set_queue_head(queue.head);
         self.set_queue_tail(queue.tail);
     }
 
     #[inline]
+    /// Set the notification to active
+    /// # Arguments
+    /// * `badge` - The badge to set
     pub fn active(&mut self, badge: usize) {
         self.set_state(NtfnState::Active as usize);
         self.set_msg_identifier(badge);
     }
 
     #[inline]
+    /// Cancel the signal of the tcb in the notification
+    /// # Arguments
+    /// * `tcb` - The tcb to cancel
     pub fn cancel_signal(&mut self, tcb: &mut tcb_t) {
         let mut queue = self.get_queue();
         queue.ep_dequeue(tcb);
@@ -61,6 +72,7 @@ impl notification_t {
     }
 
     #[inline]
+    /// Cancel all signal in the notification
     pub fn cacncel_all_signal(&mut self) {
         if self.get_state() ==  NtfnState::Waiting {
             let mut op_thread = convert_to_option_mut_type_ref::<tcb_t>(self.get_queue_head());
@@ -77,16 +89,19 @@ impl notification_t {
     }
 
     #[inline]
+    /// Bind the tcb to the notification
     pub fn bind_tcb(&mut self, tcb: &mut tcb_t) {
         self.set_bound_tcb(tcb.get_ptr());
     }
 
     #[inline]
+    /// Unbind the tcb to the notification
     pub fn unbind_tcb(&mut self) {
         self.set_bound_tcb(0);
     }
 
     #[inline]
+    /// Safely unbind the tcb to the notification
     pub fn safe_unbind_tcb(&mut self) {
         let tcb = self.get_bound_tcb();
         self.unbind_tcb();
@@ -96,11 +111,15 @@ impl notification_t {
     }
 
     #[inline]
+    /// Get the raw pointer of the notification
     pub fn get_ptr(&self) -> usize {
         self as *const notification_t as usize
     }
 
     #[inline]
+    /// Send a signal to the notification
+    /// # Arguments
+    /// * `badge` - The badge to send
     pub fn send_signal(&mut self, badge: usize) {
         match self.get_state() {
             NtfnState::Idle => {
@@ -140,6 +159,10 @@ impl notification_t {
         }
     }
 
+    /// Receive a signal from the notification
+    /// # Arguments
+    /// * `recv_thread` - The thread to receive the signal
+    /// * `is_blocking` - If the signal is blocking
     pub fn receive_signal(&mut self, recv_thread: &mut tcb_t, is_blocking: bool) {
         match self.get_state() {
             NtfnState::Idle | NtfnState::Waiting => {

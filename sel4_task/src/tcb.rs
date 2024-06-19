@@ -21,7 +21,9 @@ use super::thread_state::*;
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Clone, Copy)]
+/// Structure for the architecture registers of specific TCB
 pub struct arch_tcb_t {
+    /// The registers context of the TCB
     pub registers: [usize; n_contextRegisters],
 }
 
@@ -35,28 +37,46 @@ impl Default for arch_tcb_t {
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Clone, Copy)]
+/// Structure for the TCB
 pub struct tcb_t {
+    /// The architecture registers of the TCB
     pub tcbArch: arch_tcb_t,
+    /// The state of the TCB
     pub tcbState: thread_state_t,
+    /// The bound notification of the TCB
     pub tcbBoundNotification: usize,
+    /// The fault of the TCB
     pub tcbFault: seL4_Fault_t,
+    /// The lookup fault of the TCB
     pub tcbLookupFailure: lookup_fault_t,
+    /// The domain of the TCB
     pub domain: usize,
+    /// The maximum controlled priority of the TCB
     pub tcbMCP: usize,
+    /// The priority of the TCB
     pub tcbPriority: usize,
+    /// The time slice of the TCB
     pub tcbTimeSlice: usize,
+    /// The falut handler of the TCB
     pub tcbFaultHandler: usize,
+    /// The IPC buffer of the TCB
     pub tcbIPCBuffer: usize,
+    /// the affinity of the TCB in SMP
     #[cfg(feature = "ENABLE_SMP")]
     pub tcbAffinity: usize,
+    /// The next TCB in the scheduling queue
     pub tcbSchedNext: usize,
+    /// The previous TCB in the scheduling queue
     pub tcbSchedPrev: usize,
+    /// The next TCB in the EP queue
     pub tcbEPNext: usize,
+    /// The previous TCB in the EP queue
     pub tcbEPPrev: usize,
 }
 
 impl tcb_t {
     #[inline]
+    /// Get i th cspace of the TCB, unmutable reference
     pub fn get_cspace(&self, i: usize) -> &'static cte_t {
         unsafe {
             let p = ((self.get_ptr()) & !MASK!(seL4_TCBBits)) as *mut cte_t;
@@ -65,11 +85,13 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Initialize the TCB
     pub fn init(&mut self) {
         self.tcbArch = arch_tcb_t::default();
     }
 
     #[inline]
+    /// Get i th cspace of the TCB, mutable reference
     pub fn get_cspace_mut_ref(&mut self, i: usize) -> &'static mut cte_t {
         unsafe {
             let p = ((self as *mut tcb_t as usize) & !MASK!(seL4_TCBBits)) as *mut cte_t;
@@ -78,11 +100,13 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Get the current state of the TCB
     pub fn get_state(&self) -> ThreadState {
         unsafe { core::mem::transmute::<u8, ThreadState>(self.tcbState.get_ts_type() as u8) }
     }
 
     #[inline]
+    /// Check if the TCB is stopped by checking the state
     pub fn is_stopped(&self) -> bool {
         match self.get_state() {
             ThreadState::ThreadStateInactive | ThreadState::ThreadStateBlockedOnNotification | ThreadState::ThreadStateBlockedOnReceive
@@ -93,6 +117,7 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Check if the TCB is runnable by checking the state
     pub fn is_runnable(&self) -> bool {
         match self.get_state() {
             ThreadState::ThreadStateRunning | ThreadState::ThreadStateRestart   => true,
@@ -101,26 +126,38 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Check if the TCB is current by comparing the tcb pointer
     pub fn is_current(&self) -> bool {
         self.get_ptr() == get_currenct_thread().get_ptr()
     }
 
     #[inline]
+    /// Set the register of the TCB
+    /// # Arguments
+    /// * `reg` - The register index.
+    /// * `w` - The value to set.
     pub fn set_register(&mut self, reg: usize, w: usize) {
         self.tcbArch.registers[reg] = w;
     }
 
     #[inline]
+    /// Get the register value of the TCB
+    /// # Arguments
+    /// * `reg` - The register index.
+    /// # Returns
+    /// The value of the register.
     pub fn get_register(&self, reg: usize) -> usize {
         self.tcbArch.registers[reg]
     }
 
     #[inline]
+    /// Set the maximum controlled priority of the TCB
     pub fn set_mcp_priority(&mut self, mcp: usize) {
         self.tcbMCP = mcp;
     }
 
     #[inline]
+    /// Set the priority of the TCB, and reschedule if the thread is runnable and not current
     pub fn set_priority(&mut self, priority: usize) {
         self.sched_dequeue();
         self.tcbPriority = priority;
@@ -134,16 +171,21 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Bind the notification of the TCB
+    /// # Arguments
+    /// * `addr` - The address of the notification to bind.
     pub fn bind_notification(&mut self, addr: pptr_t) {
         self.tcbBoundNotification = addr;
     }
 
     #[inline]
+    /// Unbind the notification of the TCB(just set the bound notification to 0)
     pub fn unbind_notification(&mut self) {
         self.tcbBoundNotification = 0;
     }
 
     #[inline]
+    /// Set the domain of the TCB.
     pub fn set_domain(&mut self, dom: usize) {
         self.sched_dequeue();
         self.domain = dom;
@@ -156,6 +198,7 @@ impl tcb_t {
         }
     }
 
+    /// Enqueue the TCB to the scheduling queue
     pub fn sched_enqueue(&mut self) {
         let self_ptr = self as *mut tcb_t;
         if self.tcbState.get_tcb_queued() == 0 {
@@ -180,6 +223,7 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Get the scheduling queue by index from ksReadyQueues
     pub fn get_sched_queue(&mut self, index: usize) ->  &'static mut tcb_queue_t {
         unsafe {
             #[cfg(feature = "ENABLE_SMP")] {
@@ -194,6 +238,7 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Get the CPU of the TCB, 0 if not in SMP, tcbAffinity if in SMP
     pub fn get_cpu(&self) -> usize {
         #[cfg(feature = "ENABLE_SMP")] {
             self.tcbAffinity
@@ -203,6 +248,7 @@ impl tcb_t {
         }
     }
 
+    /// Dequeue the TCB from the scheduling queue
     pub fn sched_dequeue(&mut self) {
         if self.tcbState.get_tcb_queued() != 0 {
             let dom = self.domain;
@@ -227,6 +273,9 @@ impl tcb_t {
         }
     }
 
+    /// Append the TCB to the scheduling queue tail
+    /// # Note
+    /// This function is as same as `sched_enqueue`, but it is used for the EP queue
     pub fn sched_append(&mut self) {
         let self_ptr = self as *mut tcb_t;
         if self.tcbState.get_tcb_queued() == 0 {
@@ -269,7 +318,7 @@ impl tcb_t {
         }
     }
 
-
+    /// Set the VM root of the TCB
     pub fn set_vm_root(&self) -> Result<(), lookup_fault_t> {
         // let threadRoot = &(*getCSpace(thread as usize, tcbVTable)).cap;
         let thread_root = self.get_cspace(tcbVTable).cap;
@@ -277,6 +326,7 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Switch to the TCB(set current thread to self)
     pub fn switch_to_this(&mut self) {
         // if hart_id() == 0 {
         //     debug!("switch_to_this: {:#x}", self.get_ptr());
@@ -287,11 +337,19 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Get the pointer of the TCB
+    /// # Returns
+    /// The raw pointer of the TCB
     pub fn get_ptr(&self) -> pptr_t {
         self as *const tcb_t as usize
     }
 
     #[inline]
+    /// Look up the slot of the TCB
+    /// # Arguments
+    /// * `cap_ptr` - The capability pointer to look up
+    /// # Returns
+    /// The lookup result structure
     pub fn lookup_slot(&self, cap_ptr: usize) -> lookupSlot_raw_ret_t {
         let thread_root = self.get_cspace(tcbCTable).cap;
         let res_ret = resolve_address_bits(&thread_root, cap_ptr, wordBits);
@@ -299,6 +357,7 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Setup the reply master of the TCB
     pub fn setup_reply_master(&mut self) {
         let slot = self.get_cspace_mut_ref(tcbReply);
         if slot.cap.get_cap_type() == CapTag::CapNullCap {
@@ -308,6 +367,7 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Susupend the TCB, set the state to ThreadStateInactive and dequeue from the scheduling queue
     pub fn suspend(&mut self) {
         if self.get_state() == ThreadState::ThreadStateRunning {
             self.set_register(FaultIP, self.get_register(NextIP));
@@ -318,6 +378,7 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Restart the TCB, set the state to ThreadStateRestart and enqueue to the scheduling queue waiting for reschedule
     pub fn restart(&mut self) {
         if self.is_stopped() {
             self.setup_reply_master();
@@ -329,6 +390,10 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Setup the caller cap of the TCB
+    /// # Arguments
+    /// * `sender` - The sender TCB
+    /// * `can_grant` - If the cap can be granted
     pub fn setup_caller_cap(&mut self, sender: &mut Self, can_grant: bool) {
         set_thread_state(sender, ThreadState::ThreadStateBlockedOnReply);
         let reply_slot = sender.get_cspace_mut_ref(tcbReply);
@@ -346,11 +411,17 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Delete the caller cap of the TCB
     pub fn delete_caller_cap(&mut self) {
         let caller_slot = self.get_cspace_mut_ref(tcbCaller);
         caller_slot.delete_one();
     }
 
+    /// Look up the IPC buffer of the TCB
+    /// # Arguments
+    /// * `is_receiver` - If the TCB is receiver
+    /// # Returns
+    /// The IPC buffer of the TCB
     pub fn lookup_ipc_buffer(&self, is_receiver: bool) -> Option<&'static seL4_IPCBuffer> {
         let w_buffer_ptr = self.tcbIPCBuffer;
         let buffer_cap = self.get_cspace(tcbBuffer).cap;
@@ -371,6 +442,11 @@ impl tcb_t {
         return None;
     }
 
+    /// Look up the extra caps of the TCB
+    /// # Arguments
+    /// * `res` - The result array to store the extra caps
+    /// # Returns
+    /// The result of the lookup represented by seL4_Fault_t
     pub fn lookup_extra_caps(&self, res: &mut [pptr_t; seL4_MsgMaxExtraCaps]) -> Result<(), seL4_Fault_t>{
         let info = seL4_MessageInfo_t::from_word_security(self.get_register(msgInfoRegister));
         if let Some(buffer) = self.lookup_ipc_buffer(false) {
@@ -392,6 +468,12 @@ impl tcb_t {
         Ok(())
     }
 
+    /// Look up the extra caps of the TCB with IPC buffer
+    /// # Arguments
+    /// * `res` - The result array to store the extra caps
+    /// * `buf` - The IPC buffer to look up
+    /// # Returns
+    /// The result of the lookup represented by seL4_Fault_t
     pub fn lookup_extra_caps_with_buf(&self, res: &mut [pptr_t; seL4_MsgMaxExtraCaps], buf: Option<&seL4_IPCBuffer>) -> Result<(), seL4_Fault_t>{
         let info = seL4_MessageInfo_t::from_word_security(self.get_register(msgInfoRegister));
         if let Some(buffer) = buf {
@@ -413,6 +495,7 @@ impl tcb_t {
         Ok(())
     }
 
+    /// As same as `lookup_ipc_buffer`, but the result is mutable reference
     pub fn lookup_mut_ipc_buffer(&mut self, is_receiver: bool) -> Option<&'static mut seL4_IPCBuffer> {
         let w_buffer_ptr = self.tcbIPCBuffer;
         let buffer_cap = self.get_cspace(tcbBuffer).cap;
@@ -430,6 +513,12 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Set the message info register of the TCB
+    /// # Arguments
+    /// * `offset` - The offset of the message info register, if the offset is larger than n_msgRegisters, set to the IPC buffer
+    /// * `reg` - The value to set
+    /// # Returns
+    /// The next offset
     pub fn set_mr(&mut self, offset: usize, reg: usize) -> usize {
         if offset >= n_msgRegisters {
             if let Some(ipc_buffer) = self.lookup_mut_ipc_buffer(true) {
@@ -444,7 +533,12 @@ impl tcb_t {
         }
     }
 
-
+    /// Set the lookup fault to the msg registers of the TCB
+    /// # Arguments
+    /// * `offset` - The offset of the lookup fault
+    /// * `fault` - The lookup fault to set
+    /// # Returns
+    /// The next offset
     pub fn set_lookup_fault_mrs(&mut self, offset: usize, fault: &lookup_fault_t) -> usize {
         let luf_type = fault.get_type();
         let i = self.set_mr(offset, luf_type + 1);
@@ -473,6 +567,9 @@ impl tcb_t {
         }
     }
 
+    /// Get the receive slot of the TCB
+    /// # Returns
+    /// The mutable ref of receive slot of the TCB
     pub fn get_receive_slot(&mut self) -> Option<&'static mut cte_t> {
         if let Some(buffer) = self.lookup_ipc_buffer(true) {
             let cptr= buffer.receiveCNode;
@@ -491,6 +588,12 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Copy the message registers and ipc buffer(if valid) of the TCB to the receiver
+    /// # Arguments
+    /// * `receiver` - The receiver TCB
+    /// * `length` - The length of the message registers to copy
+    /// # Returns
+    /// The number of registers(contains ipc buffer) copied
     pub fn copy_mrs(&self, receiver: &mut tcb_t, length: usize) -> usize {
         let mut i = 0;
         while i < length && i < n_msgRegisters {
@@ -511,6 +614,11 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Copy the falut messages and ipc buffer(if valid) of the TCB to the receiver
+    /// # Arguments
+    /// * `receiver` - The receiver TCB
+    /// * `id` - The fault message id
+    /// * `length` - The length of the message registers to copy
     pub fn copy_fault_mrs(&self, receiver: &mut Self, id: usize, length: usize) {
         let len = if length < n_msgRegisters {
             length
@@ -531,6 +639,11 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Copy the falut messages for reply and ipc buffer(if valid) of the TCB to the receiver for reply
+    /// # Arguments
+    /// * `receiver` - The receiver TCB
+    /// * `id` - The fault message id
+    /// * `length` - The length of the message registers to copy
     pub fn copy_fault_mrs_for_reply(&self, receiver: &mut Self, id: usize, length: usize) {
         let len = if length < n_msgRegisters {
             length
@@ -551,16 +664,21 @@ impl tcb_t {
     }
 
     #[inline]
+    /// Copy the syscall fault messages of the TCB to the receiver
     pub fn copy_syscall_fault_mrs(&self, receiver: &mut Self) {
         self.copy_fault_mrs(receiver, MessageID_Syscall, n_syscallMessage)
     }
 
     #[inline]
+    /// Copy the exception fault messages of the TCB to the receiver
     pub fn copy_exeception_fault_mrs(&self, receiver: &mut Self) {
         self.copy_fault_mrs(receiver, MessageID_Exception, n_exceptionMessage)
     }
 
     #[inline]
+    /// Set the fault message registers of the TCB to the receiver
+    /// # Arguments
+    /// * `receiver` - The receiver TCB
     pub fn set_fault_mrs(&self, receiver: &mut Self) -> usize {
         match self.tcbFault.get_fault_type() {
             FaultType::CapFault => {
@@ -593,6 +711,10 @@ impl tcb_t {
 }
 
 #[inline]
+/// Set the thread state of the TCB
+/// # Arguments
+/// * `tcb` - The TCB to set
+/// * `state` - The state
 pub fn set_thread_state(tcb: &mut tcb_t, state: ThreadState) {
     tcb.tcbState.set_ts_type(state as usize);
     schedule_tcb(tcb);

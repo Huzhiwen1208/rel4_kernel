@@ -6,6 +6,7 @@ extern "C" {
 
 
 #[cfg(feature = "ENABLE_SMP")]
+/// This function is used to map the core.
 extern "C" {
     pub fn coreMap();
 }

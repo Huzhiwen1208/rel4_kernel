@@ -4,6 +4,8 @@
 
 */
 
+//! This is a simple logger that logs to the console.
+
 use log::{self, Level, LevelFilter, Log, Metadata, Record};
 
 use crate::println;
